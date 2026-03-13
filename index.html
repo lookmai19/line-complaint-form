@@ -3,69 +3,178 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ทดสอบฟอร์มร้องเรียน</title>
+  <title>ระบบร้องเรียนประชาชน</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 500px;
-      margin: 30px auto;
-      padding: 20px;
+      max-width: 560px;
+      margin: 20px auto;
+      padding: 16px;
+      background: #f7f7f7;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 28px;
+    }
+    h2 {
+      margin-top: 0;
+      font-size: 20px;
     }
     input, select, textarea, button {
       width: 100%;
-      padding: 10px;
+      padding: 12px;
       margin-top: 8px;
       margin-bottom: 12px;
       box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
     }
     button {
+      background: #06c755;
+      color: white;
+      border: none;
       cursor: pointer;
+      font-weight: bold;
+    }
+    button.secondary {
+      background: #2d6cdf;
     }
     .result {
-      margin-top: 16px;
+      margin-top: 12px;
       padding: 12px;
+      border-radius: 8px;
       background: #eef7ee;
       border: 1px solid #b7d8b7;
+      white-space: pre-line;
+    }
+    .status-box {
+      background: #f2f6ff;
+      border: 1px solid #c9d8ff;
+      padding: 12px;
+      border-radius: 8px;
+      white-space: pre-line;
+    }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .tabs button {
+      margin: 0;
+    }
+    .hidden {
+      display: none;
+    }
+    .muted {
+      color: #666;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
-  <h2>ฟอร์มแจ้งเรื่องร้องเรียน</h2>
+  <h1>ระบบร้องเรียนประชาชน</h1>
 
-  <label>ชื่อผู้แจ้ง</label>
-  <input id="displayName" type="text" placeholder="กรอกชื่อ" />
+  <div class="tabs">
+    <button type="button" onclick="showTab('createTab')">แจ้งเรื่องร้องเรียน</button>
+    <button type="button" class="secondary" onclick="showTab('statusTab')">เช็กสถานะ</button>
+  </div>
 
-  <label>เบอร์โทร</label>
-  <input id="phone" type="text" placeholder="08xxxxxxxx" />
+  <div id="createTab" class="card">
+    <h2>แจ้งเรื่องร้องเรียน</h2>
 
-  <label>ประเภทเรื่อง</label>
-  <select id="category">
-    <option value="ไฟถนนเสีย">ไฟถนนเสีย</option>
-    <option value="ขยะไม่เก็บ">ขยะไม่เก็บ</option>
-    <option value="น้ำไม่ไหล">น้ำไม่ไหล</option>
-    <option value="ถนนชำรุด">ถนนชำรุด</option>
-    <option value="อื่นๆ">อื่นๆ</option>
-  </select>
+    <label>ชื่อผู้แจ้ง</label>
+    <input id="displayName" type="text" placeholder="ชื่อจาก LINE" readonly />
 
-  <label>รายละเอียด</label>
-  <textarea id="detail" rows="5" placeholder="ระบุรายละเอียด"></textarea>
+    <label>เบอร์โทร</label>
+    <input id="phone" type="text" placeholder="08xxxxxxxx" />
 
-  <button onclick="submitForm()">ส่งข้อมูล</button>
+    <label>ประเภทเรื่อง</label>
+    <select id="category">
+      <option value="ไฟถนนเสีย">ไฟถนนเสีย</option>
+      <option value="ขยะไม่เก็บ">ขยะไม่เก็บ</option>
+      <option value="น้ำไม่ไหล">น้ำไม่ไหล</option>
+      <option value="ถนนชำรุด">ถนนชำรุด</option>
+      <option value="อื่นๆ">อื่นๆ</option>
+    </select>
 
-  <div id="result"></div>
+    <label>รายละเอียด</label>
+    <textarea id="detail" rows="5" placeholder="ระบุรายละเอียด"></textarea>
+
+    <button type="button" onclick="submitComplaint()">ส่งคำร้อง</button>
+
+    <div id="createResult"></div>
+  </div>
+
+  <div id="statusTab" class="card hidden">
+    <h2>เช็กสถานะคำร้อง</h2>
+
+    <label>เลขคำร้อง</label>
+    <input id="searchTicketId" type="text" placeholder="เช่น CMP-2026-0001" />
+
+    <button type="button" class="secondary" onclick="checkStatus()">ค้นหาสถานะ</button>
+
+    <div id="statusResult"></div>
+  </div>
 
   <script>
+    const LIFF_ID = "2009442667-qd7RdPit";
     const API_URL = "https://script.google.com/macros/s/AKfycbzPx8vn-Lsbwdg8BQ7WZHod2itpSwOhLJhJSFpRVMVkoc_ukj4a54W5Lgrmgt8Jqs6lSQ/exec";
 
-    async function submitForm() {
+    let lineProfile = null;
+
+    function showTab(tabId) {
+      document.getElementById("createTab").classList.add("hidden");
+      document.getElementById("statusTab").classList.add("hidden");
+      document.getElementById(tabId).classList.remove("hidden");
+    }
+
+    async function init() {
+      await liff.init({ liffId: LIFF_ID });
+
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return;
+      }
+
+      lineProfile = await liff.getProfile();
+      document.getElementById("displayName").value = lineProfile.displayName;
+    }
+
+    async function submitComplaint() {
+      let latitude = "";
+      let longitude = "";
+
+      if (navigator.geolocation) {
+        await new Promise((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              latitude = pos.coords.latitude;
+              longitude = pos.coords.longitude;
+              resolve();
+            },
+            () => resolve()
+          );
+        });
+      }
+
       const payload = {
-        lineUserId: "test-user-001",
+        action: "create",
+        lineUserId: lineProfile ? lineProfile.userId : "",
         displayName: document.getElementById("displayName").value,
         phone: document.getElementById("phone").value,
         category: document.getElementById("category").value,
         detail: document.getElementById("detail").value,
-        latitude: "",
-        longitude: ""
+        latitude: latitude,
+        longitude: longitude
       };
 
       const res = await fetch(API_URL, {
@@ -78,9 +187,48 @@
 
       const json = await res.json();
 
-      document.getElementById("result").innerHTML =
-        `<div class="result">ส่งสำเร็จ เลขคำร้อง: <b>${json.ticketId}</b></div>`;
+      if (json.ok) {
+        document.getElementById("createResult").innerHTML =
+          `<div class="result">ส่งคำร้องสำเร็จ
+เลขคำร้อง: <b>${json.ticketId}</b>
+สถานะ: ${json.status}</div>`;
+
+        document.getElementById("searchTicketId").value = json.ticketId;
+      } else {
+        document.getElementById("createResult").innerHTML =
+          `<div class="result">เกิดข้อผิดพลาด: ${json.message || "ไม่สามารถส่งข้อมูลได้"}</div>`;
+      }
     }
+
+    async function checkStatus() {
+      const ticketId = document.getElementById("searchTicketId").value.trim();
+
+      if (!ticketId) {
+        document.getElementById("statusResult").innerHTML =
+          `<div class="status-box">กรุณากรอกเลขคำร้อง</div>`;
+        return;
+      }
+
+      const res = await fetch(`${API_URL}?action=checkStatus&ticketId=${encodeURIComponent(ticketId)}`);
+      const json = await res.json();
+
+      if (json.ok) {
+        document.getElementById("statusResult").innerHTML =
+          `<div class="status-box">
+เลขคำร้อง: <b>${json.ticketId}</b>
+ผู้แจ้ง: ${json.displayName || "-"}
+ประเภทเรื่อง: ${json.category || "-"}
+รายละเอียด: ${json.detail || "-"}
+สถานะล่าสุด: <b>${json.status || "-"}</b>
+หมายเหตุเจ้าหน้าที่: ${json.officerNote || "-"}
+</div>`;
+      } else {
+        document.getElementById("statusResult").innerHTML =
+          `<div class="status-box">${json.message || "ไม่พบข้อมูล"}</div>`;
+      }
+    }
+
+    init();
   </script>
 </body>
 </html>
