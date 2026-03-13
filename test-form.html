@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ทดสอบฟอร์มร้องเรียน</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 500px;
+      margin: 30px auto;
+      padding: 20px;
+    }
+    input, select, textarea, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      margin-bottom: 12px;
+      box-sizing: border-box;
+    }
+    button {
+      cursor: pointer;
+    }
+    .result {
+      margin-top: 16px;
+      padding: 12px;
+      background: #eef7ee;
+      border: 1px solid #b7d8b7;
+    }
+  </style>
+</head>
+<body>
+  <h2>ฟอร์มแจ้งเรื่องร้องเรียน</h2>
+
+  <label>ชื่อผู้แจ้ง</label>
+  <input id="displayName" type="text" placeholder="กรอกชื่อ" />
+
+  <label>เบอร์โทร</label>
+  <input id="phone" type="text" placeholder="08xxxxxxxx" />
+
+  <label>ประเภทเรื่อง</label>
+  <select id="category">
+    <option value="ไฟถนนเสีย">ไฟถนนเสีย</option>
+    <option value="ขยะไม่เก็บ">ขยะไม่เก็บ</option>
+    <option value="น้ำไม่ไหล">น้ำไม่ไหล</option>
+    <option value="ถนนชำรุด">ถนนชำรุด</option>
+    <option value="อื่นๆ">อื่นๆ</option>
+  </select>
+
+  <label>รายละเอียด</label>
+  <textarea id="detail" rows="5" placeholder="ระบุรายละเอียด"></textarea>
+
+  <button onclick="submitForm()">ส่งข้อมูล</button>
+
+  <div id="result"></div>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzPx8vn-Lsbwdg8BQ7WZHod2itpSwOhLJhJSFpRVMVkoc_ukj4a54W5Lgrmgt8Jqs6lSQ/exec";
+
+    async function submitForm() {
+      const payload = {
+        lineUserId: "test-user-001",
+        displayName: document.getElementById("displayName").value,
+        phone: document.getElementById("phone").value,
+        category: document.getElementById("category").value,
+        detail: document.getElementById("detail").value,
+        latitude: "",
+        longitude: ""
+      };
+
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const json = await res.json();
+
+      document.getElementById("result").innerHTML =
+        `<div class="result">ส่งสำเร็จ เลขคำร้อง: <b>${json.ticketId}</b></div>`;
+    }
+  </script>
+</body>
+</html>
